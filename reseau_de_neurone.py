@@ -52,12 +52,13 @@ class ReseauDeNeurone:
     def Calculate(self,couche,Vcouche,poid,bias=None):
         for i in range(0, len(poid)):
             couche[i] = self.sigmoid(couche[i])
-            a1 = 0
-            for j in range(0, len(poid[i])):
-                a1 += couche[i] *poid[i][j]
-            a1 = a1 / len(couche)
-            Vcouche.append(a1) 
 
+        for i in range(0, len(poid[0])):
+            a1 = 0
+            for j in range(0, len(poid)):
+                a1 += couche[j] * poid[j][i]
+            a1 = a1 / len(couche)
+            Vcouche.append(a1)
             
         print(len(Vcouche))
         for i in range(0, len(Vcouche)):
