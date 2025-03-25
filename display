@@ -1,12 +1,15 @@
 import pygame
 import numpy as np
+from keras.models import load_model
 
-# Initialisation de Pygame
-pygame.init()
+# Charger le modèle entraîné
+model = load_model('mnist_model.h5')
 
-# Dimensions de la fenêtre
+# Dimensions
 WINDOW_WIDTH, WINDOW_HEIGHT = 600, 400
 DRAWING_WIDTH, DRAWING_HEIGHT = 400, 400
+GRID_SIZE = 28
+CELL_SIZE = DRAWING_WIDTH // GRID_SIZE
 
 # Couleurs
 WHITE = (255, 255, 255)
@@ -16,6 +19,7 @@ LIGHT_GRAY = (230, 230, 230)
 RED = (255, 0, 0)
 
 # Création de la fenêtre
+pygame.init()
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 pygame.display.set_caption("Reconnaissance de chiffres")
 
@@ -26,30 +30,30 @@ drawing_surface.fill(WHITE)
 # Bouton
 button_rect = pygame.Rect(420, 50, 160, 80)
 
-# Fonction de reconnaissance de chiffre (à définir par l'utilisateur)
+# Grille
+grid = np.zeros((GRID_SIZE, GRID_SIZE), dtype=np.uint8)
+
+# Fonction pour dessiner sur la grille
+def draw_on_grid(pos):
+    x, y = pos[0] // CELL_SIZE, pos[1] // CELL_SIZE
+    if 0 <= x < GRID_SIZE and 0 <= y < GRID_SIZE:
+        grid[y][x] = 255  # Dessiner en noir
+        pygame.draw.rect(drawing_surface, BLACK, (x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
+
+# Fonction de reconnaissance de chiffre
 def guessNumber(image):
-    # Exemple de retour (à remplacer par votre logique)
-    showImage(image)
-    return "5"
+    image = image.reshape(1, GRID_SIZE, GRID_SIZE)
+    image = image.reshape(1, GRID_SIZE * GRID_SIZE)  # Aplatir
+    image = image / 255.0  # Normalisation
+    prediction = model.predict(image)
+    return np.argmax(prediction)
 
-def showImage(image):
-    print("")
-    for indexC in range(28):
-        for indexL in range(28):
-            b=image[indexL][indexC]
-            if b == 0:
-                print("⬜", end="")
-            else:
-                print("⬛", end="")
-        print("")
-
-
+# Boucle principale
 def main():
     running = True
     drawing = False
     recognized = False
 
-    # Remplir le fond de la fenêtre en gris clair
     window.fill(LIGHT_GRAY)
     window.blit(drawing_surface, (0, 0))
     pygame.draw.rect(window, GRAY, button_rect)
@@ -64,19 +68,10 @@ def main():
                 running = False
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:  # Clic gauche
+                if event.button == 1:
                     if button_rect.collidepoint(event.pos):
-                        # Récupérer l'image dessinée et la redimensionner
-                        image = pygame.transform.scale(drawing_surface, (28, 28))
-                        image_array = pygame.surfarray.array2d(image)
-
-                        # Convertir les valeurs RGB en niveaux de gris (0-255)
-                        image_array = (255 - image_array) // 16777215 * 255
-
-                        # Appeler la fonction de reconnaissance
-                        result = guessNumber(image_array)
-
-                        # Afficher le résultat
+                        image = grid.copy()
+                        result = guessNumber(image)
                         font = pygame.font.Font(None, 48)
                         text = font.render(f"{result}", True, RED)
                         window.fill(LIGHT_GRAY)
@@ -84,12 +79,11 @@ def main():
                         window.blit(text, (420, 150))
                         pygame.draw.rect(window, GRAY, button_rect)
                         pygame.display.flip()
-
                         recognized = True
                     else:
                         if recognized:
-                            # Effacer le dessin précédent
                             drawing_surface.fill(WHITE)
+                            grid.fill(0)
                             recognized = False
                         drawing = True
 
@@ -99,13 +93,12 @@ def main():
 
             elif event.type == pygame.MOUSEMOTION:
                 if drawing:
-                    pygame.draw.circle(drawing_surface, BLACK, event.pos, 20)
+                    draw_on_grid(event.pos)
                     window.fill(LIGHT_GRAY)
                     window.blit(drawing_surface, (0, 0))
                     pygame.draw.rect(window, GRAY, button_rect)
                     pygame.display.flip()
 
-        # Dessiner le bouton
         pygame.draw.rect(window, GRAY, button_rect)
         font = pygame.font.Font(None, 24)
         text = font.render("Reconnaître", True, BLACK)
